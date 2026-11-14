@@ -1,0 +1,30 @@
+{
+  "name": "Hanging Clozet",
+  "short_name": "Clozet",
+  "description": "A local-first wardrobe organiser: catalogue your clothes, keep photos on your device, and find combinations ranked by colour harmony.",
+  "start_url": "index.html",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f6efe4",
+  "theme_color": "#b4552d",
+  "icons": [
+    {
+      "src": "assets/brand/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/brand/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/brand/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

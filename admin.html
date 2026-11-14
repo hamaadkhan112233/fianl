@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f6efe4">
+<meta name="description" content="Local administrator console for Hanging Clozet.">
+<meta name="application-name" content="Hanging Clozet">
+<meta name="apple-mobile-web-app-title" content="Hanging Clozet">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex,nofollow">
+<meta property="og:title" content="Hanging Clozet — Admin">
+<meta property="og:description" content="Local administrator console for Hanging Clozet.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Hanging Clozet">
+<meta property="og:image" content="assets/brand/og.png">
+<link rel="icon" href="assets/brand/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/brand/logo-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<title>Hanging Clozet — Admin</title>
+<script src="assets/js/theme.js"></script>
+<script src="assets/js/app.js" defer></script>
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/motion.css">
+</head>
+<body>
+
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-stage">
+    <img class="splash-logo" src="assets/brand/logo.svg" alt="" width="86" height="86">
+    <p class="splash-word">Hanging <b>Clozet</b></p>
+    <p class="splash-tag">Your closet, hanging in order.</p>
+    <div class="splash-bar"><span></span></div>
+  </div>
+</div>
+
+<header class="nav">
+  <a class="brand" href="wardrobe.html">
+    <img class="brand-mark" src="assets/brand/logo.svg" alt="" width="28" height="28">
+    Hanging Clozet <span class="admin-tag">Admin</span>
+  </a>
+  <nav class="nav-links" aria-label="Main">
+    <a href="wardrobe.html">Wardrobe</a>
+    <a href="combinations.html">Combinations</a>
+    <a href="admin.html">Admin</a>
+  </nav>
+  <div class="nav-right">
+    <span class="user-chip" id="userChip" hidden></span>
+    <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn" hidden>Sign out</button>
+  </div>
+</header>
+
+<main class="page admin-page">
+
+  <section class="admin-gate" id="adminGate" hidden>
+    <div class="admin-gate-card">
+      <div>
+        <p class="eyebrow">Restricted</p>
+        <h1>Administrator sign in</h1>
+        <p class="sub">Manage the accounts and closets stored in this browser.</p>
+      </div>
+
+      <form class="auth-form" id="adminLoginForm" novalidate>
+        <label class="field">
+          <span>Username</span>
+          <input class="input" id="adminUser" type="text" value="admin" autocomplete="username" required>
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <div class="pw-wrap">
+            <input class="input" id="adminPass" type="password" autocomplete="current-password" required>
+            <button type="button" class="pw-toggle" data-target="adminPass">Show</button>
+          </div>
+        </label>
+        <p class="form-error" id="adminLoginError" role="alert" hidden></p>
+        <button class="btn btn-primary btn-block" type="submit" id="adminSubmit">Enter console</button>
+      </form>
+
+      <a class="btn btn-ghost btn-block" href="index.html">Back to wardrobe sign in</a>
+    </div>
+  </section>
+
+  <section id="adminPanel" hidden>
+    <section class="page-head">
+      <div>
+        <p class="eyebrow">Control room</p>
+        <h1>Admin console</h1>
+        <p class="sub">Accounts, closets and recent activity for this device.</p>
+      </div>
+      <div class="admin-head-actions">
+        <span class="admin-who" id="adminWho"></span>
+        <a class="btn btn-ghost" href="wardrobe.html">My wardrobe</a>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Administrator summary">
+      <div class="stat">
+        <div class="stat-value" id="adminUsers">0</div>
+        <div class="stat-label">Accounts</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="adminPieces">0</div>
+        <div class="stat-label">Pieces</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="adminStorage">0 KB</div>
+        <div class="stat-label">Closet storage</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="adminLooks">0</div>
+        <div class="stat-label">Possible looks</div>
+      </div>
+    </section>
+
+    <div class="segmented admin-tabs" id="adminTabs" role="tablist" aria-label="Admin sections">
+      <button type="button" role="tab" data-tab="users" class="is-active" aria-selected="true">Users</button>
+      <button type="button" role="tab" data-tab="activity" aria-selected="false">Activity</button>
+      <button type="button" role="tab" data-tab="data" aria-selected="false">Data</button>
+      <button type="button" role="tab" data-tab="account" aria-selected="false">My account</button>
+    </div>
+
+    <section class="admin-pane" id="paneUsers">
+      <div class="admin-toolbar">
+        <div class="search">
+          <input class="input" id="adminSearch" type="search" placeholder="Search accounts…" aria-label="Search accounts">
+        </div>
+        <div class="toolbar-spacer"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="adminRefresh">Refresh</button>
+      </div>
+      <div class="table-wrap" id="usersHost"></div>
+      <p class="hint" style="margin-top:0.75rem">Click any account row for every stored field — password hash fingerprint, closet stats and activity.</p>
+    </section>
+
+    <section class="admin-pane" id="paneActivity" hidden>
+      <div class="admin-toolbar">
+        <p class="small dim" id="activityCount"></p>
+        <div class="toolbar-spacer"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="activityRefresh">Refresh</button>
+      </div>
+      <div class="log-list" id="activityHost"></div>
+    </section>
+
+    <section class="admin-pane" id="paneData" hidden>
+      <div class="admin-grid">
+        <div class="admin-card">
+          <h3>Export everything</h3>
+          <p>Download accounts, every closet and the activity log as a single JSON backup.</p>
+          <button type="button" class="btn btn-ghost" id="exportAllBtn">Download backup</button>
+        </div>
+
+        <div class="admin-card">
+          <h3>Storage by account</h3>
+          <p>Approximate browser storage used by each closet's photos.</p>
+          <div class="admin-meta-list" id="storageBreakdown"></div>
+        </div>
+
+        <div class="admin-card">
+          <h3>Audit trail</h3>
+          <p>Sign-ins, closet edits and admin actions are recorded locally. The newest 300 events are kept.</p>
+          <button type="button" class="btn btn-ghost" id="activityJumpBtn">View activity</button>
+        </div>
+
+        <div class="admin-card danger">
+          <h3>Clear all closets</h3>
+          <p>Removes every piece and photo from every account. Accounts and the admin login stay intact.</p>
+          <button type="button" class="btn btn-danger" id="clearClosetsBtn">Clear wardrobes</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-pane" id="paneAccount" hidden>
+      <div class="admin-grid">
+        <div class="admin-card">
+          <h3>Administrator</h3>
+          <div class="admin-meta-list" id="adminMeta"></div>
+        </div>
+
+        <form class="admin-card" id="passwordForm" novalidate>
+          <h3>Change password</h3>
+          <p>Updating the password also removes the default-credential hint from the sign-in card.</p>
+          <label class="field">
+            <span>Current password</span>
+            <input class="input" id="pwCurrent" type="password" autocomplete="current-password" required>
+          </label>
+          <label class="field">
+            <span>New password</span>
+            <input class="input" id="pwNext" type="password" autocomplete="new-password" minlength="8" required>
+          </label>
+          <label class="field">
+            <span>Confirm new password</span>
+            <input class="input" id="pwConfirm" type="password" autocomplete="new-password" required>
+          </label>
+          <p class="form-error" id="pwError" role="alert" hidden></p>
+          <button class="btn btn-primary" type="submit" id="pwSubmit">Update password</button>
+        </form>
+      </div>
+    </section>
+  </section>
+</main>
+
+<!-- reset a user's password -->
+<dialog class="modal" id="resetDialog" aria-labelledby="resetTitle" style="width:min(460px,calc(100% - 1.6rem))">
+  <header class="modal-head">
+    <div>
+      <p class="eyebrow">Reset access</p>
+      <h2 id="resetTitle">New password</h2>
+    </div>
+    <button type="button" class="icon-btn" id="resetClose" aria-label="Close dialog">✕</button>
+  </header>
+  <form id="resetForm" novalidate>
+    <p class="hint" id="resetSub"></p>
+    <label class="field">
+      <span>New password</span>
+      <div class="pw-wrap">
+        <input class="input" id="resetPass" type="password" autocomplete="new-password" minlength="8" required>
+        <button type="button" class="pw-toggle" data-target="resetPass">Show</button>
+      </div>
+    </label>
+    <label class="field">
+      <span>Confirm password</span>
+      <input class="input" id="resetConfirm" type="password" autocomplete="new-password" required>
+    </label>
+    <p class="form-error" id="resetError" role="alert" hidden></p>
+    <footer class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="resetCancel">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="resetSave">Set password</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- inspect a user's closet -->
+<dialog class="modal" id="inspectDialog" aria-labelledby="inspectTitle" style="width:min(760px,calc(100% - 1.6rem))">
+  <header class="modal-head">
+    <div>
+      <p class="eyebrow">Closet</p>
+      <h2 id="inspectTitle">Closet</h2>
+    </div>
+    <button type="button" class="icon-btn" id="inspectClose" aria-label="Close dialog">✕</button>
+  </header>
+  <div style="padding:0.35rem 1.25rem 1.25rem">
+    <p class="hint" id="inspectSub"></p>
+    <div class="inspect-grid" id="inspectGrid"></div>
+  </div>
+</dialog>
+
+<!-- account details -->
+<dialog class="modal account-modal" id="accountDialog" aria-labelledby="accountTitle" style="width:min(720px,calc(100% - 1.6rem))">
+  <header class="modal-head">
+    <div>
+      <p class="eyebrow">Account details</p>
+      <h2 id="accountTitle">Account</h2>
+    </div>
+    <button type="button" class="icon-btn" id="accountClose" aria-label="Close dialog">✕</button>
+  </header>
+
+  <div class="account-body">
+    <div class="account-grid" id="accountFacts"></div>
+
+    <div class="account-card">
+      <h3>Password</h3>
+      <p class="account-note">Passwords are stored as PBKDF2-SHA256 hashes. The original password cannot be displayed or recovered — reset it to set a known one.</p>
+      <div class="account-grid" id="accountPassword"></div>
+      <div class="account-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="accountResetBtn">Reset password</button>
+      </div>
+    </div>
+
+    <div class="account-card">
+      <h3>Closet</h3>
+      <div class="account-grid" id="accountStats"></div>
+      <div class="account-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="accountClosetBtn">Open closet</button>
+      </div>
+    </div>
+
+    <div class="account-card">
+      <h3>Recent activity</h3>
+      <div class="account-activity" id="accountActivity"></div>
+    </div>
+  </div>
+
+  <footer class="modal-actions" style="padding:0.9rem 1.25rem 1.25rem">
+    <button type="button" class="btn btn-ghost" id="accountDone">Close</button>
+  </footer>
+</dialog>
+
+<!-- confirm -->
+<dialog class="modal" id="confirmDialog" aria-labelledby="confirmTitle" style="width:min(420px,calc(100% - 1.6rem))">
+  <header class="modal-head">
+    <div>
+      <h2 id="confirmTitle">Are you sure?</h2>
+    </div>
+  </header>
+  <div style="padding:0 1.25rem 0">
+    <p class="muted small" id="confirmMessage"></p>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:.6rem;padding:1.15rem 1.25rem">
+    <button type="button" class="btn btn-ghost" id="confirmCancel">Cancel</button>
+    <button type="button" class="btn btn-danger" id="confirmOk">Confirm</button>
+  </div>
+</dialog>
+
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>

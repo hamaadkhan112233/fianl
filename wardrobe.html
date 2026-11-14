@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f6efe4">
+<meta name="description" content="Your closet, hanging in order. Add pieces, keep favourites, and see every pairing in your wardrobe.">
+<meta name="application-name" content="Hanging Clozet">
+<meta name="apple-mobile-web-app-title" content="Hanging Clozet">
+<meta name="mobile-web-app-capable" content="yes">
+
+<meta property="og:title" content="Hanging Clozet — My wardrobe">
+<meta property="og:description" content="Your closet, hanging in order. Add pieces, keep favourites, and see every pairing in your wardrobe.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Hanging Clozet">
+<meta property="og:image" content="assets/brand/og.png">
+<link rel="icon" href="assets/brand/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/brand/logo-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<title>Hanging Clozet — My wardrobe</title>
+<script src="assets/js/theme.js"></script>
+<script src="assets/js/app.js" defer></script>
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/motion.css">
+</head>
+<body>
+
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-stage">
+    <img class="splash-logo" src="assets/brand/logo.svg" alt="" width="86" height="86">
+    <p class="splash-word">Hanging <b>Clozet</b></p>
+    <p class="splash-tag">Your closet, hanging in order.</p>
+    <div class="splash-bar"><span></span></div>
+  </div>
+</div>
+
+<header class="nav">
+  <a class="brand" href="wardrobe.html">
+    <img class="brand-mark" src="assets/brand/logo.svg" alt="" width="28" height="28">
+    Hanging Clozet
+  </a>
+  <nav class="nav-links" aria-label="Main">
+    <a href="wardrobe.html">Wardrobe</a>
+    <a href="combinations.html">Combinations</a>
+  </nav>
+  <div class="nav-right">
+    <span class="user-chip" id="userChip" hidden></span>
+    <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn">Sign out</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="page-head">
+    <div>
+      <p class="eyebrow">Your closet</p>
+      <h1><span id="greeting">Good evening</span>, <span id="greetName">there</span>.</h1>
+      <p class="sub" id="headSub">Everything you own, in one place. Add a piece and it becomes available for combinations.</p>
+    </div>
+    <button type="button" class="btn btn-primary" id="addItemBtn">
+      <span aria-hidden="true">+</span> Add piece
+    </button>
+  </section>
+
+  <section class="stats" aria-label="Wardrobe summary">
+    <div class="stat">
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-label">Pieces</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statTops">0</div>
+      <div class="stat-label">Shirts</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statBottoms">0</div>
+      <div class="stat-label">Trousers</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statCombos">0</div>
+      <div class="stat-label">Possible looks</div>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <div class="chips" id="filters" role="tablist" aria-label="Filter by category"></div>
+    <div class="toolbar-spacer"></div>
+    <div class="search">
+      <input class="input" id="searchInput" type="search" placeholder="Search pieces…" aria-label="Search pieces">
+    </div>
+    <div class="sort-wrap">
+      <select class="input" id="sortSelect" aria-label="Sort pieces">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="name">Name A–Z</option>
+        <option value="color">Group by colour</option>
+      </select>
+    </div>
+    <div class="meter" title="Approximate browser storage used by your photos">
+      <span id="storageLabel">0 KB</span>
+      <span class="meter-bar"><span class="meter-fill" id="storageFill"></span></span>
+    </div>
+    <div class="toolbar-tools">
+      <button type="button" class="btn btn-ghost btn-sm" id="exportBtn" title="Download this closet as JSON">Backup</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="importBtn" title="Restore pieces from a backup file">Restore</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+
+  <section id="grid" class="grid" aria-live="polite"></section>
+  <div id="emptyHost"></div>
+</main>
+
+<!-- add / edit piece -->
+<dialog class="modal" id="itemDialog" aria-labelledby="itemDialogTitle">
+  <header class="modal-head">
+    <div>
+      <p class="eyebrow" id="itemDialogEyebrow">Add to wardrobe</p>
+      <h2 id="itemDialogTitle">New piece</h2>
+    </div>
+    <button type="button" class="icon-btn" id="itemDialogClose" aria-label="Close dialog">✕</button>
+  </header>
+
+  <form id="itemForm" novalidate>
+    <div class="source-tabs" id="sourceTabs" role="tablist" aria-label="Image source">
+      <button type="button" role="tab" class="source-tab is-active" data-source="upload" aria-selected="true">Upload image</button>
+      <button type="button" role="tab" class="source-tab" data-source="link" aria-selected="false">Image link</button>
+    </div>
+
+    <div id="paneUpload">
+      <label class="dropzone" id="dropzone">
+        <input id="fileInput" type="file" accept="image/*" hidden>
+        <span class="dz-icon" aria-hidden="true">↑</span>
+        <span class="dz-title">Drop a photo here, or click to browse</span>
+        <span class="dz-hint">JPG, PNG or WebP · drop, browse, or press Ctrl+V — stored on this device</span>
+      </label>
+    </div>
+
+    <div id="paneLink" hidden>
+      <div class="inline-field">
+        <input class="input" id="imageUrl" type="url" inputmode="url" placeholder="https://example.com/oxford-shirt.jpg" autocomplete="off">
+        <button type="button" class="btn btn-ghost" id="useLinkBtn">Load</button>
+      </div>
+      <p class="hint" style="margin-top:.45rem">Direct image links and Google/Bing image results work. You'll pick which piece to keep next.</p>
+      <p class="link-status" id="resolverStatus">Checking link resolver…</p>
+    </div>
+
+    <div class="preview" id="preview" hidden>
+      <img id="previewImg" alt="Selected garment preview">
+      <div class="preview-meta">
+        <span class="badge" id="detectedBadge" hidden></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="clearImageBtn">Remove image</button>
+      </div>
+    </div>
+
+    <div class="field-grid">
+      <label class="field">
+        <span>Name</span>
+        <input class="input" id="itemName" type="text" maxlength="60" placeholder="Charcoal wool suit">
+      </label>
+      <label class="field">
+        <span>Category</span>
+        <select class="input" id="itemCategory"></select>
+      </label>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Colour</span>
+      <div class="swatches" id="swatches" role="radiogroup" aria-label="Garment colour"></div>
+      <p class="swatch-name" id="swatchName">Grey</p>
+      <p class="hint">This drives your combination scores. Detected automatically when possible.</p>
+    </div>
+
+    <p class="form-error" id="itemError" role="alert" hidden></p>
+
+    <footer class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="itemCancel">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="itemSave">Save piece</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- choose which piece to keep -->
+<dialog class="modal crop-modal" id="cropDialog" aria-labelledby="cropTitle">
+  <header class="modal-head">
+    <div>
+      <p class="eyebrow">Choose what to keep</p>
+      <h2 id="cropTitle">Which piece?</h2>
+    </div>
+    <button type="button" class="icon-btn" id="cropClose" aria-label="Close dialog">✕</button>
+  </header>
+
+  <div class="crop-body">
+    <p class="hint" id="cropHint">If the picture shows a shirt, trousers or several pieces together, drag over the piece you want. The quick areas below help too.</p>
+
+    <div class="crop-stage" id="cropStage">
+      <img id="cropImage" alt="Image to choose a piece from" draggable="false">
+      <div class="crop-box" id="cropBox"></div>
+    </div>
+
+    <div class="crop-meta">
+      <div class="chips" id="cropPresets" role="group" aria-label="Suggested areas">
+        <button type="button" class="chip is-active" data-preset="full">Whole image</button>
+        <button type="button" class="chip" data-preset="top">Top</button>
+        <button type="button" class="chip" data-preset="middle">Middle</button>
+        <button type="button" class="chip" data-preset="bottom">Bottom</button>
+        <button type="button" class="chip" data-preset="left">Left</button>
+        <button type="button" class="chip" data-preset="right">Right</button>
+      </div>
+      <span class="crop-size" id="cropSize">Whole image</span>
+    </div>
+
+    <p class="hint">Colour is detected from the area you keep.</p>
+    <p class="form-error" id="cropError" role="alert" hidden></p>
+
+    <footer class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cropCancel">Cancel</button>
+      <button type="button" class="btn btn-primary" id="cropUse">Keep this piece</button>
+    </footer>
+  </div>
+</dialog>
+
+<!-- confirm -->
+<dialog class="modal" id="confirmDialog" aria-labelledby="confirmTitle" style="width:min(420px,calc(100% - 1.6rem))">
+  <header class="modal-head">
+    <div>
+      <h2 id="confirmTitle">Remove piece?</h2>
+    </div>
+  </header>
+  <div style="padding:0 1.25rem 0">
+    <p class="muted small" id="confirmMessage"></p>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:.6rem;padding:1.15rem 1.25rem">
+    <button type="button" class="btn btn-ghost" id="confirmCancel">Keep it</button>
+    <button type="button" class="btn btn-danger" id="confirmOk">Delete</button>
+  </div>
+</dialog>
+
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/wardrobe.js"></script>
+</body>
+</html>

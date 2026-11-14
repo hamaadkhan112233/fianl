@@ -1,0 +1,304 @@
+/* ==========================================================================
+   Hanging Clozet — administrator console
+   Extends the shared token palette from style.css.
+   ========================================================================== */
+
+.admin-page { width: min(1240px, 100% - 2.4rem); }
+
+/* ------------------------------ gate ---------------------------------- */
+
+.admin-gate {
+  display: grid;
+  place-items: center;
+  padding: clamp(2rem, 6vw, 4.5rem) 0;
+}
+
+.admin-gate-card {
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  gap: 1.05rem;
+  padding: clamp(1.5rem, 3.5vw, 2.2rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-gate-card h1 { font-size: 1.55rem; }
+.admin-gate-card .sub { font-size: 0.88rem; color: var(--text-2); margin-top: 0.3rem; }
+.admin-gate-card .auth-form { display: grid; gap: 0.9rem; }
+
+/* ---------------------------- head / stats ----------------------------- */
+
+.admin-head-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.admin-who { font-size: 0.8rem; color: var(--text-3); }
+
+.admin-tabs { margin-bottom: 1.35rem; }
+
+.admin-pane { animation: rise 0.3s var(--ease) both; }
+
+/* ------------------------------ toolbar -------------------------------- */
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.admin-toolbar .search { flex: 0 1 300px; }
+
+/* ------------------------------- table --------------------------------- */
+
+.table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: auto;
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.72rem 0.9rem;
+  text-align: left;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-table td {
+  padding: 0.68rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.84rem;
+  color: var(--text-2);
+  vertical-align: middle;
+}
+.admin-table tr:last-child td { border-bottom: 0; }
+.admin-table tbody tr:hover td { background: rgb(var(--tint-rgb) / 0.025); }
+
+.admin-user { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.admin-user b { display: block; color: var(--text); font-weight: 600; font-size: 0.88rem; }
+.admin-user span { display: block; color: var(--text-3); font-size: 0.75rem; }
+.admin-user .avatar { flex: none; }
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.role-badge.admin {
+  color: var(--accent-soft);
+  background: rgb(var(--accent-rgb) / 0.14);
+  border: 1px solid rgb(var(--accent-rgb) / 0.35);
+}
+.role-badge.user {
+  color: var(--text-3);
+  background: rgb(var(--tint-rgb) / 0.05);
+  border: 1px solid var(--line);
+}
+
+.status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--text-2); }
+.status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sage);
+  box-shadow: 0 0 0 3px rgb(var(--sage-rgb) / 0.15);
+}
+.status.off i { background: var(--danger); box-shadow: 0 0 0 3px rgb(var(--danger-rgb) / 0.15); }
+.status.off { color: var(--danger-soft); }
+
+.admin-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end; }
+.admin-actions .btn { padding: 0.3rem 0.55rem; font-size: 0.73rem; }
+.admin-actions .btn[disabled] { opacity: 0.35; }
+
+.admin-table tbody tr { cursor: pointer; }
+
+/* --------------------------- account dossier --------------------------- */
+
+.account-body {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.35rem 1.25rem 0;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 0.9rem;
+}
+
+.account-fact { display: grid; gap: 0.12rem; min-width: 0; }
+.account-fact span {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-3);
+}
+.account-fact b {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.account-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.account-card h3 { font-size: 0.95rem; }
+.account-note { font-size: 0.8rem; line-height: 1.5; color: var(--text-2); }
+.account-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.account-activity { display: grid; gap: 0.4rem; max-height: 210px; overflow: auto; }
+.account-event {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+.account-event:last-child { border-bottom: 0; padding-bottom: 0; }
+.account-event time { font-size: 0.72rem; color: var(--text-3); }
+.account-event p { font-size: 0.8rem; color: var(--text-2); }
+.account-event .log-kind { font-size: 0.62rem; }
+.account-empty { padding: 0.5rem 0; font-size: 0.82rem; color: var(--text-3); }
+
+@media (max-width: 600px) {
+  .account-grid { grid-template-columns: 1fr; }
+  .account-event { grid-template-columns: 1fr; gap: 0.15rem; }
+}
+
+.admin-empty { padding: 1.6rem; text-align: center; color: var(--text-3); font-size: 0.88rem; }
+
+/* ------------------------------ activity ------------------------------- */
+
+.log-list { display: grid; gap: 0.4rem; }
+
+.log-row {
+  display: grid;
+  grid-template-columns: 9rem 8rem 1fr;
+  gap: 0.8rem;
+  align-items: baseline;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgb(var(--surface-rgb) / 0.55);
+  font-size: 0.82rem;
+}
+.log-row time { color: var(--text-3); font-size: 0.74rem; }
+.log-kind {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.log-row p { color: var(--text-2); }
+.log-actor { color: var(--text-3); }
+
+@media (max-width: 700px) {
+  .log-row { grid-template-columns: 1fr auto; }
+  .log-row p { grid-column: 1 / -1; }
+}
+
+/* ---------------------------- data / account --------------------------- */
+
+.admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+@media (max-width: 760px) { .admin-grid { grid-template-columns: 1fr; } }
+
+.admin-card {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.admin-card h3 { font-size: 1rem; }
+.admin-card p { color: var(--text-2); font-size: 0.85rem; }
+.admin-card .btn { justify-self: start; }
+.admin-card.danger { border-color: rgb(var(--danger-rgb) / 0.3); }
+.admin-card .form-error { margin: 0; }
+
+.admin-meta-list { display: grid; gap: 0.35rem; font-size: 0.84rem; color: var(--text-2); }
+.admin-meta-list b { color: var(--text); font-weight: 600; }
+
+.meter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+.meter-row b { color: var(--text); font-weight: 600; }
+.meter-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.warn-note {
+  margin-top: 0.2rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--accent-rgb) / 0.3);
+  background: rgb(var(--accent-rgb) / 0.1);
+  color: var(--accent-soft);
+  font-size: 0.8rem;
+}
+
+/* ------------------------------ inspect -------------------------------- */
+
+.inspect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(122px, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.inspect-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+}
+.inspect-item img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
+.inspect-meta { padding: 0.4rem 0.55rem 0.2rem; display: grid; gap: 0.1rem; }
+.inspect-meta b {
+  font-size: 0.78rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspect-meta span { font-size: 0.7rem; color: var(--text-3); }
+.inspect-item .btn { margin: 0.3rem 0.55rem 0.55rem; padding: 0.28rem 0.5rem; font-size: 0.7rem; }
+.inspect-empty { padding: 1.5rem; text-align: center; color: var(--text-3); font-size: 0.88rem; }

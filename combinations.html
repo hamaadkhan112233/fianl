@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f6efe4">
+<meta name="description" content="Every shirt and trouser pairing in your closet, ranked by colour harmony.">
+<meta name="application-name" content="Hanging Clozet">
+<meta name="apple-mobile-web-app-title" content="Hanging Clozet">
+<meta name="mobile-web-app-capable" content="yes">
+
+<meta property="og:title" content="Hanging Clozet — Combinations">
+<meta property="og:description" content="Every shirt and trouser pairing in your closet, ranked by colour harmony.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Hanging Clozet">
+<meta property="og:image" content="assets/brand/og.png">
+<link rel="icon" href="assets/brand/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/brand/logo-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<title>Hanging Clozet — Combinations</title>
+<script src="assets/js/theme.js"></script>
+<script src="assets/js/app.js" defer></script>
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/motion.css">
+</head>
+<body>
+
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-stage">
+    <img class="splash-logo" src="assets/brand/logo.svg" alt="" width="86" height="86">
+    <p class="splash-word">Hanging <b>Clozet</b></p>
+    <p class="splash-tag">Your closet, hanging in order.</p>
+    <div class="splash-bar"><span></span></div>
+  </div>
+</div>
+
+<header class="nav">
+  <a class="brand" href="wardrobe.html">
+    <img class="brand-mark" src="assets/brand/logo.svg" alt="" width="28" height="28">
+    Hanging Clozet
+  </a>
+  <nav class="nav-links" aria-label="Main">
+    <a href="wardrobe.html">Wardrobe</a>
+    <a href="combinations.html">Combinations</a>
+  </nav>
+  <div class="nav-right">
+    <span class="user-chip" id="userChip" hidden></span>
+    <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn">Sign out</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="page-head">
+    <div>
+      <p class="eyebrow">Outfit studio</p>
+      <h1>Every pairing, ranked.</h1>
+      <p class="sub" id="comboSub">We cross every shirt with every pair of trousers, then score the colour harmony.</p>
+    </div>
+    <a class="btn btn-ghost" href="wardrobe.html">Back to wardrobe</a>
+  </section>
+
+  <section class="combo-controls">
+    <div class="segmented" id="modeTabs" role="tablist" aria-label="Combination type">
+      <button type="button" role="tab" data-mode="pair" class="is-active" aria-selected="true">Shirt × trousers</button>
+      <button type="button" role="tab" data-mode="look" aria-selected="false">Add shoes</button>
+    </div>
+    <div class="sort-wrap">
+      <select class="input" id="comboSort" aria-label="Sort combinations">
+        <option value="best">Best match first</option>
+        <option value="newest">Newest pieces first</option>
+        <option value="shared">Shared colours first</option>
+      </select>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" id="pickLookBtn">Pick a look</button>
+    <div class="toolbar-spacer"></div>
+    <p class="small dim" id="comboCount"></p>
+  </section>
+
+  <div id="spotlightHost"></div>
+
+  <section id="comboGrid" class="combo-grid" aria-live="polite"></section>
+  <div id="comboEmpty"></div>
+
+  <div class="load-more-wrap">
+    <button type="button" class="btn btn-ghost" id="loadMoreBtn" hidden>Show more combinations</button>
+  </div>
+</main>
+
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/combos.js"></script>
+</body>
+</html>
