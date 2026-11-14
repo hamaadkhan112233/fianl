@@ -127,6 +127,47 @@
 .status.off i { background: var(--danger); box-shadow: 0 0 0 3px rgb(var(--danger-rgb) / 0.15); }
 .status.off { color: var(--danger-soft); }
 
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.live-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sage);
+  box-shadow: 0 0 0 3px rgb(var(--sage-rgb) / 0.15);
+  animation: live-pulse 2s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.new-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  background: rgb(var(--accent-rgb) / 0.14);
+  border: 1px solid rgb(var(--accent-rgb) / 0.32);
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-pill i { animation: none; }
+}
+
 .admin-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end; }
 .admin-actions .btn { padding: 0.3rem 0.55rem; font-size: 0.73rem; }
 .admin-actions .btn[disabled] { opacity: 0.35; }

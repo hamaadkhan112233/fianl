@@ -32,6 +32,10 @@ password hash fingerprint, closet stats and recent activity. Passwords are
 hashed with PBKDF2-SHA256 and cannot be displayed; use **Reset password** to
 set a known one.
 
+The admin lists accounts created in the same browser and at the same address
+(origin). Registrations made in another browser or on another device are
+stored there and cannot appear here — there is no shared account server.
+
 ## Themes
 
 The default is **Amber Day**, a flat warm palette (cream paper, terracotta,

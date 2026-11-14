@@ -22,7 +22,10 @@
     query: '',
     resetTarget: null,
     inspectAccount: null,
-    detailsAccount: null
+    detailsAccount: null,
+    knownIds: null,
+    newIds: {},
+    newTimer: null
   };
 
   var gate = $('#adminGate');
@@ -67,6 +70,7 @@
 
     UI.mountNav(admin);
     $('#adminWho').textContent = '@' + admin.username + ' signed in';
+    $('#usersOriginValue').textContent = window.location.origin;
 
     refresh();
     switchTab('users');
@@ -85,11 +89,46 @@
     })[0];
     if (self) state.admin = self;
 
+    trackNewAccounts();
+
     updateStats();
     renderUsers();
     renderActivity();
     renderStorage();
     renderMeta();
+  }
+
+  function trackNewAccounts() {
+    var current = {};
+    state.accounts.forEach(function (account) { current[account.id] = true; });
+
+    if (state.knownIds === null) {
+      state.knownIds = current;
+      return;
+    }
+
+    var fresh = state.accounts.filter(function (account) {
+      return !state.knownIds[account.id];
+    });
+    state.knownIds = current;
+
+    if (!fresh.length) return;
+
+    fresh.forEach(function (account) { state.newIds[account.id] = true; });
+
+    var latest = fresh[fresh.length - 1];
+    UI.toast(
+      fresh.length === 1
+        ? 'New registration: ' + latest.name + ' (@' + latest.username + ')'
+        : fresh.length + ' new registrations — newest: ' + latest.name + ' (@' + latest.username + ')',
+      'success'
+    );
+
+    clearTimeout(state.newTimer);
+    state.newTimer = setTimeout(function () {
+      state.newIds = {};
+      if (state.admin && !panel.hidden) renderUsers();
+    }, 15000);
   }
 
   /* ---------------------------------------------------------------- */
@@ -149,7 +188,9 @@
         return '<tr data-id="' + account.id + '" title="Open full account details">' +
           '<td><div class="admin-user">' +
             '<span class="avatar">' + Util.esc(UI.initials(account.name)) + '</span>' +
-            '<div><b>' + Util.esc(account.name) + '</b><span>@' + Util.esc(account.username) + '</span></div>' +
+            '<div><b>' + Util.esc(account.name) +
+              (state.newIds[account.id] ? ' <em class="new-badge">New</em>' : '') +
+              '</b><span>@' + Util.esc(account.username) + '</span></div>' +
           '</div></td>' +
           '<td><span class="role-badge ' + (account.role === 'admin' ? 'admin' : 'user') + '">' +
             (account.role === 'admin' ? 'Admin' : 'User') + '</span></td>' +
@@ -702,6 +743,23 @@
       button.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
     });
   });
+
+  /* live account updates */
+  var autoRefreshTimer = null;
+
+  function scheduleAutoRefresh() {
+    if (!state.admin || panel.hidden) return;
+    clearTimeout(autoRefreshTimer);
+    autoRefreshTimer = setTimeout(refresh, 150);
+  }
+
+  window.addEventListener('storage', scheduleAutoRefresh);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) scheduleAutoRefresh();
+  });
+  setInterval(function () {
+    if (!document.hidden && state.admin && !panel.hidden) refresh();
+  }, 8000);
 
   /* dialogs */
   UI.wireDialog($('#resetDialog'));

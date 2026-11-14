@@ -128,10 +128,12 @@
           <input class="input" id="adminSearch" type="search" placeholder="Search accounts…" aria-label="Search accounts">
         </div>
         <div class="toolbar-spacer"></div>
+        <span class="live-pill" title="Accounts update automatically"><i></i>Live</span>
         <button type="button" class="btn btn-ghost btn-sm" id="adminRefresh">Refresh</button>
       </div>
       <div class="table-wrap" id="usersHost"></div>
-      <p class="hint" style="margin-top:0.75rem">Click any account row for every stored field — password hash fingerprint, closet stats and activity.</p>
+      <p class="hint" id="usersOrigin" style="margin-top:0.75rem">Showing accounts saved in this browser for <b id="usersOriginValue"></b>. Admin and wardrobe must use the same address.</p>
+      <p class="hint" style="margin-top:0.35rem">Click any account row for every stored field — password hash fingerprint, closet stats and activity.</p>
     </section>
 
     <section class="admin-pane" id="paneActivity" hidden>
