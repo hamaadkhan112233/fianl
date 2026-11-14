@@ -26,6 +26,144 @@
   };
 
   /* ------------------------------------------------------------------ */
+  /* shared server mode                                                 */
+  /* ------------------------------------------------------------------ */
+
+  var TOKEN_KEY = NS + '.token';
+  var remote = false;
+  var remoteBase = '';
+  var remoteAccount = null;
+  var remoteItems = [];
+  var remoteAccounts = null;
+  var remoteEvents = null;
+  var itemCache = {};
+  var initPromise = null;
+  var pushTimer = null;
+
+  function configuredBase() {
+    var raw = global.CLOZET_CONFIG && global.CLOZET_CONFIG.apiBase;
+    return String(raw || '').trim().replace(/\/+$/, '');
+  }
+
+  function apiCandidates() {
+    var configured = configuredBase();
+    if (configured) return [configured];
+
+    var host = global.location.hostname;
+    var local = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    var bases = [''];
+    if (local) {
+      for (var port = 8000; port <= 8002; port++) {
+        bases.push('http://127.0.0.1:' + port);
+      }
+    }
+    return bases;
+  }
+
+  function getToken() {
+    try { return global.localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
+  }
+
+  function setToken(token) {
+    try {
+      if (token) global.localStorage.setItem(TOKEN_KEY, token);
+      else global.localStorage.removeItem(TOKEN_KEY);
+    } catch (e) { /* ignore */ }
+  }
+
+  function apiFetch(base, path, options, timeoutMs) {
+    if (!global.fetch) return Promise.reject(new Error('remote-unavailable'));
+
+    var opts = options || {};
+    var headers = { Accept: 'application/json' };
+    if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+    var token = getToken();
+    if (token) headers.Authorization = 'Bearer ' + token;
+
+    var controller = typeof global.AbortController !== 'undefined'
+      ? new global.AbortController()
+      : null;
+    var timer = setTimeout(function () {
+      if (controller) controller.abort();
+    }, timeoutMs || 15000);
+
+    var request = { method: opts.method || 'GET', headers: headers, cache: 'no-store' };
+    if (opts.body !== undefined) request.body = JSON.stringify(opts.body);
+    if (controller) request.signal = controller.signal;
+
+    return global.fetch((base || '') + path, request)
+      .then(function (response) {
+        clearTimeout(timer);
+        return response.json().catch(function () { return {}; }).then(function (data) {
+          if (!response.ok || data.ok === false) {
+            var error = new Error(data.error || ('http-' + response.status));
+            error.status = response.status;
+            throw error;
+          }
+          return data;
+        });
+      }, function () {
+        clearTimeout(timer);
+        throw new Error('remote-unavailable');
+      });
+  }
+
+  function init() {
+    if (initPromise) return initPromise;
+
+    initPromise = new Promise(function (resolve) {
+      var bases = apiCandidates();
+      var index = 0;
+
+      function next() {
+        if (index >= bases.length) {
+          remote = false;
+          resolve({ mode: 'local' });
+          return;
+        }
+
+        var base = bases[index++];
+        apiFetch(base, '/api/health', {}, 1100).then(function (health) {
+          if (!health || health.ok !== true || health.service !== 'hanging-clozet') {
+            throw new Error('remote-unavailable');
+          }
+
+          remote = true;
+          remoteBase = base;
+
+          var token = getToken();
+          if (!token) {
+            resolve({ mode: 'remote', account: null });
+            return;
+          }
+
+          return apiFetch(base, '/api/auth/session', {}, 12000)
+            .then(function (session) {
+              remoteAccount = session.account;
+              remoteItems = session.items || [];
+              itemCache[remoteAccount.id] = remoteItems;
+              resolve({ mode: 'remote', account: remoteAccount });
+            })
+            .catch(function (err) {
+              if (err && (err.message === 'unauthorized' || err.status === 401)) setToken('');
+              remoteAccount = null;
+              remoteItems = [];
+              resolve({ mode: 'remote', account: null });
+            });
+        }).catch(next);
+      }
+
+      next();
+    });
+
+    return initPromise;
+  }
+
+  function isRemote() {
+    return remote;
+  }
+
+  /* ------------------------------------------------------------------ */
   /* palette & taxonomy                                                 */
   /* ------------------------------------------------------------------ */
 
@@ -241,6 +379,7 @@
   }
 
   function listEvents() {
+    if (remote) return remoteEvents ? remoteEvents.slice() : [];
     var list = readJSON(KEYS.audit, []);
     return Array.isArray(list) ? list : [];
   }
@@ -260,6 +399,22 @@
   }
 
   function signup(name, username, password) {
+    if (remote) {
+      return apiFetch(remoteBase, '/api/auth/signup', {
+        method: 'POST',
+        body: { name: name, username: username, password: password }
+      }, 20000).then(function (data) {
+        clearTimeout(pushTimer);
+        setToken(data.token);
+        remoteAccount = data.account;
+        remoteItems = data.items || [];
+        itemCache[remoteAccount.id] = remoteItems;
+        remoteAccounts = null;
+        remoteEvents = null;
+        return data.account;
+      });
+    }
+
     if (!cryptoReady()) return Promise.reject(new Error('crypto-unavailable'));
 
     var uname = String(username || '').trim().toLowerCase();
@@ -298,6 +453,22 @@
   }
 
   function login(username, password) {
+    if (remote) {
+      return apiFetch(remoteBase, '/api/auth/login', {
+        method: 'POST',
+        body: { username: username, password: password }
+      }, 20000).then(function (data) {
+        clearTimeout(pushTimer);
+        setToken(data.token);
+        remoteAccount = data.account;
+        remoteItems = data.items || [];
+        itemCache[remoteAccount.id] = remoteItems;
+        remoteAccounts = null;
+        remoteEvents = null;
+        return data.account;
+      });
+    }
+
     if (!cryptoReady()) return Promise.reject(new Error('crypto-unavailable'));
 
     var account = findAccount(username);
@@ -317,6 +488,8 @@
   }
 
   function getSession() {
+    if (remote) return remoteAccount;
+
     var session = readJSON(KEYS.session, null);
     if (!session || !session.uid) return null;
     if (!session.expiresAt || session.expiresAt < Date.now()) {
@@ -355,6 +528,20 @@
   }
 
   function logout() {
+    if (remote) {
+      var token = getToken();
+      if (token) {
+        apiFetch(remoteBase, '/api/auth/logout', { method: 'POST', body: {} }, 8000)
+          .catch(function () { /* offline logout still clears locally */ });
+      }
+      clearTimeout(pushTimer);
+      setToken('');
+      remoteAccount = null;
+      remoteItems = [];
+      remoteAccounts = null;
+      remoteEvents = null;
+      itemCache = {};
+    }
     try { global.localStorage.removeItem(KEYS.session); } catch (e) { /* ignore */ }
   }
 
@@ -390,6 +577,8 @@
   }
 
   function ensureAdmin() {
+    if (remote) return Promise.resolve(false);
+
     var existing = findAccount(ADMIN_USERNAME);
     if (existing) {
       // Accounts created before roles existed could have claimed this name.
@@ -460,6 +649,7 @@
   }
 
   function listAccounts() {
+    if (remote) return remoteAccounts ? remoteAccounts.slice() : [];
     return getAccounts().map(function (account) {
       return {
         id: account.id,
@@ -475,6 +665,12 @@
   }
 
   function getAccountDetails(uid) {
+    if (remote) {
+      if (!remoteAccounts) return null;
+      var remoteAccount = remoteAccounts.filter(function (account) { return account.id === uid; })[0];
+      return remoteAccount || null;
+    }
+
     var account = findById(uid);
     if (!account) return null;
 
@@ -495,6 +691,46 @@
     };
   }
 
+  function fetchAccounts() {
+    if (!remote) return Promise.resolve(listAccounts());
+    return apiFetch(remoteBase, '/api/admin/accounts', {}, 15000).then(function (data) {
+      remoteAccounts = data.accounts || [];
+      return remoteAccounts;
+    });
+  }
+
+  function fetchEvents() {
+    if (!remote) return Promise.resolve(listEvents());
+    return apiFetch(remoteBase, '/api/admin/audit', {}, 15000).then(function (data) {
+      remoteEvents = data.events || [];
+      return remoteEvents;
+    });
+  }
+
+  function fetchItems(uid) {
+    if (!remote) return Promise.resolve(listItems(uid));
+    return apiFetch(remoteBase, '/api/admin/accounts/' + encodeURIComponent(uid) + '/items', {}, 20000)
+      .then(function (data) {
+        var items = data.items || [];
+        itemCache[uid] = items;
+        return items;
+      });
+  }
+
+  function deleteAdminItem(uid, itemId) {
+    if (!remote) {
+      deleteItem(uid, itemId);
+      return Promise.resolve(listItems(uid));
+    }
+    return apiFetch(remoteBase, '/api/admin/accounts/' + encodeURIComponent(uid) + '/items/' + encodeURIComponent(itemId), {
+      method: 'DELETE'
+    }, 20000).then(function (data) {
+      var items = data.items || [];
+      itemCache[uid] = items;
+      return items;
+    });
+  }
+
   function adminCount() {
     return getAccounts().filter(function (account) {
       return account.role === 'admin' && !account.disabled;
@@ -513,6 +749,12 @@
   }
 
   function setAccountDisabled(uid, disabled, actor) {
+    if (remote) {
+      return apiFetch(remoteBase, '/api/admin/accounts/' + encodeURIComponent(uid) + '/disabled', {
+        method: 'POST', body: { disabled: !!disabled }
+      }, 15000);
+    }
+
     var target = findById(uid);
     if (!target) throw new Error('not-found');
     if (disabled && target.role === 'admin' && adminCount() <= 1) throw new Error('last-admin');
@@ -530,6 +772,12 @@
   }
 
   function deleteAccount(uid, actor) {
+    if (remote) {
+      return apiFetch(remoteBase, '/api/admin/accounts/' + encodeURIComponent(uid), {
+        method: 'DELETE'
+      }, 15000);
+    }
+
     var target = findById(uid);
     if (!target) throw new Error('not-found');
     if (target.role === 'admin' && adminCount() <= 1) throw new Error('last-admin');
@@ -544,6 +792,13 @@
   }
 
   function setPassword(uid, newPassword, actor) {
+    if (remote) {
+      if (String(newPassword || '').length < 8) return Promise.reject(new Error('weak-password'));
+      return apiFetch(remoteBase, '/api/admin/accounts/' + encodeURIComponent(uid) + '/password', {
+        method: 'POST', body: { password: newPassword }
+      }, 20000);
+    }
+
     if (!cryptoReady()) return Promise.reject(new Error('crypto-unavailable'));
     if (String(newPassword || '').length < 8) return Promise.reject(new Error('weak-password'));
 
@@ -566,6 +821,17 @@
   }
 
   function changePassword(uid, currentPassword, newPassword) {
+    if (remote) {
+      if (String(newPassword || '').length < 8) return Promise.reject(new Error('weak-password'));
+      return apiFetch(remoteBase, '/api/auth/password', {
+        method: 'POST',
+        body: { currentPassword: currentPassword, newPassword: newPassword }
+      }, 20000).then(function (data) {
+        if (data.token) setToken(data.token);
+        if (remoteAccount) remoteAccount.defaultPassword = false;
+      });
+    }
+
     if (!cryptoReady()) return Promise.reject(new Error('crypto-unavailable'));
     if (String(newPassword || '').length < 8) return Promise.reject(new Error('weak-password'));
 
@@ -592,6 +858,12 @@
   }
 
   function clearWardrobes(actor) {
+    if (remote) {
+      return apiFetch(remoteBase, '/api/admin/clear-closets', {
+        method: 'POST', body: {}
+      }, 20000).then(function (data) { return data.removed || 0; });
+    }
+
     var accounts = getAccounts();
     accounts.forEach(function (account) {
       try { global.localStorage.removeItem(itemsKey(account.id)); } catch (e) { /* ignore */ }
@@ -601,6 +873,12 @@
   }
 
   function exportAll() {
+    if (remote) {
+      return apiFetch(remoteBase, '/api/admin/export', {}, 30000).then(function (data) {
+        return data.export;
+      });
+    }
+
     var accounts = listAccounts();
     var wardrobes = {};
     accounts.forEach(function (account) {
@@ -649,6 +927,13 @@
 
     if (!added.length) throw new Error('invalid-backup');
 
+    if (remote && remoteAccount && uid === remoteAccount.id) {
+      remoteItems = added.concat(existing);
+      itemCache[uid] = remoteItems;
+      schedulePushItems();
+      return added.length;
+    }
+
     saveItems(uid, added.concat(existing));
     return added.length;
   }
@@ -660,6 +945,11 @@
   function itemsKey(uid) { return KEYS.items(uid); }
 
   function listItems(uid) {
+    if (remote) {
+      if (remoteAccount && uid === remoteAccount.id) return remoteItems.slice();
+      return itemCache[uid] ? itemCache[uid].slice() : [];
+    }
+
     var list = readJSON(itemsKey(uid), []);
     return Array.isArray(list) ? list : [];
   }
@@ -668,8 +958,8 @@
     writeJSON(itemsKey(uid), list);
   }
 
-  function createItem(uid, draft) {
-    var item = {
+  function buildItem(draft) {
+    return {
       id: randomId('i'),
       name: String(draft.name || '').trim() || categoryLabel(draft.category),
       category: CATEGORY_MAP[draft.category] ? draft.category : 'shirt',
@@ -678,6 +968,67 @@
       favorite: false,
       createdAt: Date.now()
     };
+  }
+
+  function schedulePushItems() {
+    if (!remote || !remoteAccount) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(function () {
+      pushTimer = null;
+      apiFetch(remoteBase, '/api/items', {
+        method: 'PUT',
+        body: { items: remoteItems }
+      }, 30000).then(function (data) {
+        if (Array.isArray(data.items)) {
+          remoteItems = data.items;
+          itemCache[remoteAccount.id] = remoteItems;
+        }
+      }).catch(function (err) {
+        try {
+          global.dispatchEvent(new CustomEvent('clozet-sync-error', {
+            detail: { message: err && err.message ? err.message : 'sync-failed' }
+          }));
+        } catch (e) { /* ignore */ }
+      });
+    }, 350);
+  }
+
+  function flushPushItems() {
+    if (!remote || !remoteAccount || !pushTimer) return;
+    clearTimeout(pushTimer);
+    pushTimer = null;
+
+    var headers = { Accept: 'application/json', 'Content-Type': 'application/json' };
+    var token = getToken();
+    if (token) headers.Authorization = 'Bearer ' + token;
+
+    try {
+      global.fetch((remoteBase || '') + '/api/items', {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify({ items: remoteItems }),
+        keepalive: true
+      }).catch(function () { /* best effort */ });
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  global.addEventListener('pagehide', flushPushItems);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) flushPushItems();
+  });
+
+  function createItem(uid, draft) {
+    if (remote && remoteAccount && uid === remoteAccount.id) {
+      var remoteItem = buildItem(draft);
+      remoteItems.unshift(remoteItem);
+      itemCache[uid] = remoteItems;
+      schedulePushItems();
+      return remoteItem;
+    }
+
+    var item = buildItem(draft);
     var list = listItems(uid);
     list.unshift(item);
     saveItems(uid, list);
@@ -685,6 +1036,18 @@
   }
 
   function updateItem(uid, id, patch) {
+    if (remote && remoteAccount && uid === remoteAccount.id) {
+      for (var r = 0; r < remoteItems.length; r++) {
+        if (remoteItems[r].id !== id) continue;
+        var remoteNext = Object.assign({}, remoteItems[r], patch, { id: remoteItems[r].id });
+        remoteItems[r] = remoteNext;
+        itemCache[uid] = remoteItems;
+        schedulePushItems();
+        return remoteNext;
+      }
+      return null;
+    }
+
     var list = listItems(uid);
     for (var i = 0; i < list.length; i++) {
       if (list[i].id !== id) continue;
@@ -697,12 +1060,27 @@
   }
 
   function deleteItem(uid, id) {
+    if (remote && remoteAccount && uid === remoteAccount.id) {
+      remoteItems = remoteItems.filter(function (item) { return item.id !== id; });
+      itemCache[uid] = remoteItems;
+      schedulePushItems();
+      return remoteItems.slice();
+    }
+
     var list = listItems(uid).filter(function (item) { return item.id !== id; });
     saveItems(uid, list);
     return list;
   }
 
   function storageUsage(uid) {
+    if (remote) {
+      try {
+        return JSON.stringify(listItems(uid)).length * 2;
+      } catch (e) {
+        return 0;
+      }
+    }
+
     try {
       var raw = global.localStorage.getItem(itemsKey(uid)) || '';
       return raw.length * 2; // UTF-16 code units → rough bytes
@@ -993,13 +1371,30 @@
     });
   }
 
+  function resolverCandidates() {
+    var bases = [];
+    function add(base) {
+      if (base && bases.indexOf(base) < 0) bases.push(base);
+    }
+
+    var configured = configuredBase();
+    if (configured) add(configured + '/api');
+    if (remoteBase) add(remoteBase + '/api');
+    add('api');
+
+    var host = global.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+      RESOLVER_PORTS.forEach(function (port) {
+        add('http://127.0.0.1:' + port + '/api');
+      });
+    }
+    return bases;
+  }
+
   function findResolver() {
     if (resolverBase) return Promise.resolve(resolverBase);
 
-    var bases = ['api'];
-    RESOLVER_PORTS.forEach(function (port) {
-      bases.push('http://127.0.0.1:' + port + '/api');
-    });
+    var bases = resolverCandidates();
 
     var index = 0;
     function next() {
@@ -1226,6 +1621,8 @@
     categoryLabel: categoryLabel,
     storageAvailable: storageAvailable,
     cryptoReady: cryptoReady,
+    init: init,
+    isRemote: isRemote,
     signup: signup,
     login: login,
     getSession: getSession,
@@ -1234,6 +1631,10 @@
     logout: logout,
     ensureAdmin: ensureAdmin,
     listAccounts: listAccounts,
+    fetchAccounts: fetchAccounts,
+    fetchEvents: fetchEvents,
+    fetchItems: fetchItems,
+    deleteAdminItem: deleteAdminItem,
     getAccountDetails: getAccountDetails,
     setAccountDisabled: setAccountDisabled,
     deleteAccount: deleteAccount,

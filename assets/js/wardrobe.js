@@ -5,6 +5,8 @@
 (function () {
   'use strict';
 
+  Store.init().then(function () {
+
   var $ = UI.$, $$ = UI.$$;
   var account = Store.requireSession('index.html');
   if (!account) return;
@@ -919,4 +921,5 @@
 
   // Refresh relative dates if the tab sat open overnight.
   window.addEventListener('focus', function () { updateHeadline(); });
+  });
 })();

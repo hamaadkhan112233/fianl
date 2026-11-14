@@ -5,6 +5,8 @@
 (function () {
   'use strict';
 
+  Store.init().then(function () {
+
   var $ = UI.$;
   var account = Store.requireSession('index.html');
   if (!account) return;
@@ -287,4 +289,5 @@
   });
 
   render();
+  });
 })();

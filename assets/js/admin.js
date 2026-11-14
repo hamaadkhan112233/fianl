@@ -7,6 +7,8 @@
 (function () {
   'use strict';
 
+  Store.init().then(function () {
+
   var $ = UI.$, $$ = UI.$$;
 
   var PANES = {
@@ -38,7 +40,7 @@
   boot();
 
   function boot() {
-    if (!Store.cryptoReady()) {
+    if (!Store.cryptoReady() && !Store.isRemote()) {
       showGate();
       showError($('#adminLoginError'),
         'Secure password hashing is unavailable. Open the app through run.bat (http://localhost:8000) instead of the file directly.');
@@ -70,7 +72,17 @@
 
     UI.mountNav(admin);
     $('#adminWho').textContent = '@' + admin.username + ' signed in';
-    $('#usersOriginValue').textContent = window.location.origin;
+
+    var origin = $('#usersOrigin');
+    if (origin) {
+      if (Store.isRemote()) {
+        origin.textContent = 'Connected to the shared server. Accounts from every device appear here.';
+      } else {
+        origin.innerHTML = 'Showing accounts saved in this browser for <b>' +
+          Util.esc(window.location.origin) +
+          '</b>. Admin and wardrobe must use the same address.';
+      }
+    }
 
     refresh();
     switchTab('users');
@@ -78,6 +90,33 @@
   }
 
   function refresh() {
+    if (Store.isRemote()) {
+      Promise.all([
+        Store.fetchAccounts(),
+        Store.fetchEvents().catch(function () { return []; })
+      ]).then(function () {
+        applyAccounts();
+      }).catch(function (err) {
+        if (adminSessionLost(err)) return;
+        UI.toast('Could not reach the shared account server.', 'error');
+      });
+      return;
+    }
+
+    applyAccounts();
+  }
+
+  function adminSessionLost(err) {
+    if (err && (err.message === 'unauthorized' || err.status === 401)) {
+      Store.logout();
+      showGate();
+      UI.toast('Your admin session expired. Sign in again.', 'error');
+      return true;
+    }
+    return false;
+  }
+
+  function applyAccounts() {
     try {
       state.accounts = Store.listAccounts();
     } catch (e) {
@@ -257,6 +296,14 @@
         break;
       }
     }
+    if (!lastLogin) {
+      for (var s = 0; s < events.length; s++) {
+        if (events[s].kind === 'auth.signup') {
+          lastLogin = events[s];
+          break;
+        }
+      }
+    }
 
     $('#accountFacts').innerHTML =
       factHTML('Display name', details.name) +
@@ -298,19 +345,20 @@
     var next = !account.disabled;
 
     function run() {
-      try {
-        Store.setAccountDisabled(account.id, next, state.admin.username);
-      } catch (err) {
-        UI.toast(err.message === 'last-admin'
+      Promise.resolve().then(function () {
+        return Store.setAccountDisabled(account.id, next, state.admin.username);
+      }).then(function () {
+        UI.toast(next ? 'Account disabled.' : 'Account re-enabled.', next ? 'error' : 'success');
+        refresh();
+      }).catch(function (err) {
+        if (adminSessionLost(err)) return;
+        UI.toast(err && err.message === 'last-admin'
           ? 'At least one active administrator is required.'
           : 'Could not update that account.', 'error');
-        return;
-      }
-      UI.toast(next ? 'Account disabled.' : 'Account re-enabled.', next ? 'error' : 'success');
-      refresh();
+      });
     }
 
-    if (next) return run();
+    if (!next) return run();
 
     UI.confirmAction({
       title: 'Disable @' + account.username + '?',
@@ -322,20 +370,21 @@
   function removeAccount(account) {
     UI.confirmAction({
       title: 'Delete @' + account.username + '?',
-      message: 'The account and every piece in its closet are removed from this browser. This cannot be undone.',
+      message: 'The account and every piece in its closet are removed permanently. This cannot be undone.',
       confirmLabel: 'Delete account'
     }).then(function (confirmed) {
       if (!confirmed) return;
-      try {
-        Store.deleteAccount(account.id, state.admin.username);
-      } catch (err) {
-        UI.toast(err.message === 'last-admin'
+      Promise.resolve().then(function () {
+        return Store.deleteAccount(account.id, state.admin.username);
+      }).then(function () {
+        refresh();
+        UI.toast('Account deleted.', 'success');
+      }).catch(function (err) {
+        if (adminSessionLost(err)) return;
+        UI.toast(err && err.message === 'last-admin'
           ? 'At least one active administrator is required.'
           : 'Could not delete that account.', 'error');
-        return;
-      }
-      refresh();
-      UI.toast('Account deleted.', 'success');
+      });
     });
   }
 
@@ -391,6 +440,10 @@
       })
       .catch(function (err) {
         busy(button, false);
+        if (adminSessionLost(err)) {
+          $('#resetDialog').close();
+          return;
+        }
         showError(error, passwordError(err));
       });
   });
@@ -401,14 +454,24 @@
 
   function openInspect(account) {
     state.inspectAccount = account;
-    var items = Store.listItems(account.id);
 
-    $('#inspectTitle').textContent = account.name;
-    $('#inspectSub').textContent = '@' + account.username + ' · ' +
-      items.length + (items.length === 1 ? ' piece' : ' pieces') + ' · ' + UI.bytesLabel(account.stats.bytes);
+    function show(items) {
+      $('#inspectTitle').textContent = account.name;
+      $('#inspectSub').textContent = '@' + account.username + ' · ' +
+        items.length + (items.length === 1 ? ' piece' : ' pieces') + ' · ' + UI.bytesLabel(account.stats.bytes);
 
-    renderInspect(items);
-    UI.openDialog($('#inspectDialog'));
+      renderInspect(items);
+      UI.openDialog($('#inspectDialog'));
+    }
+
+    if (Store.isRemote()) {
+      Store.fetchItems(account.id).then(show).catch(function (err) {
+        if (adminSessionLost(err)) return;
+        UI.toast('Could not load that closet from the server.', 'error');
+      });
+    } else {
+      show(Store.listItems(account.id));
+    }
   }
 
   function renderInspect(items) {
@@ -449,26 +512,23 @@
     }).then(function (confirmed) {
       if (!confirmed) return;
 
-      try {
-        Store.deleteItem(account.id, item.id);
-      } catch (err) {
+      Store.deleteAdminItem(account.id, item.id).then(function (next) {
+        Store.logEvent(
+          'admin.item.delete',
+          'Removed “' + item.name + '” from @' + account.username + '’s closet',
+          state.admin.username
+        );
+
+        account.stats.pieces = next.length;
+        renderInspect(next);
+        $('#inspectSub').textContent = '@' + account.username + ' · ' +
+          next.length + (next.length === 1 ? ' piece' : ' pieces');
+        refresh();
+        UI.toast('Piece removed.', 'success');
+      }).catch(function (err) {
+        if (adminSessionLost(err)) return;
         UI.toast('Could not delete that piece.', 'error');
-        return;
-      }
-
-      Store.logEvent(
-        'admin.item.delete',
-        'Removed “' + item.name + '” from @' + account.username + '’s closet',
-        state.admin.username
-      );
-
-      var next = Store.listItems(account.id);
-      account.stats.pieces = next.length;
-      renderInspect(next);
-      $('#inspectSub').textContent = '@' + account.username + ' · ' +
-        next.length + (next.length === 1 ? ' piece' : ' pieces');
-      refresh();
-      UI.toast('Piece removed.', 'success');
+      });
     });
   });
 
@@ -565,6 +625,7 @@
       })
       .catch(function (err) {
         busy(button, false);
+        if (adminSessionLost(err)) return;
         showError(error, passwordError(err));
       });
   });
@@ -604,26 +665,32 @@
     UI.toast('Console refreshed.');
   });
 
-  $('#activityRefresh').addEventListener('click', renderActivity);
+  $('#activityRefresh').addEventListener('click', function () { refresh(); });
   $('#activityJumpBtn').addEventListener('click', function () { switchTab('activity'); });
 
   $('#exportAllBtn').addEventListener('click', function () {
-    var payload = Store.exportAll();
-    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
+    Promise.resolve().then(function () {
+      return Store.exportAll();
+    }).then(function (payload) {
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
 
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = 'hanging-clozet-admin-' + new Date().toISOString().slice(0, 10) + '.json';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = 'hanging-clozet-admin-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
 
-    Store.logEvent('admin.export', 'Exported full backup', state.admin.username);
-    renderActivity();
-    UI.toast('Backup downloaded.', 'success');
+      Store.logEvent('admin.export', 'Exported full backup', state.admin.username);
+      renderActivity();
+      UI.toast('Backup downloaded.', 'success');
+    }).catch(function (err) {
+      if (adminSessionLost(err)) return;
+      UI.toast('Could not export the backup.', 'error');
+    });
   });
 
   $('#clearClosetsBtn').addEventListener('click', function () {
@@ -635,15 +702,15 @@
     }).then(function (confirmed) {
       if (!confirmed) return;
 
-      try {
-        Store.clearWardrobes(state.admin.username);
-      } catch (err) {
+      Promise.resolve().then(function () {
+        return Store.clearWardrobes(state.admin.username);
+      }).then(function () {
+        refresh();
+        UI.toast('All closets cleared.', 'success');
+      }).catch(function (err) {
+        if (adminSessionLost(err)) return;
         UI.toast('Could not clear the closets.', 'error');
-        return;
-      }
-
-      refresh();
-      UI.toast('All closets cleared.', 'success');
+      });
     });
   });
 
@@ -781,5 +848,6 @@
     if (!account) return;
     $('#accountDialog').close();
     openInspect(account);
+  });
   });
 })();

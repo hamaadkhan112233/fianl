@@ -20,14 +20,19 @@
 
   function scheduleReady() {
     var wait = reduced ? 0 : Math.max(0, 450 - elapsed());
-    setTimeout(markReady, wait);
+    var ready = (window.Store && Store.init) ? Store.init() : Promise.resolve();
+    ready.then(function () {
+      setTimeout(markReady, wait);
+    }, function () {
+      setTimeout(markReady, wait);
+    });
   }
 
   if (document.readyState === 'complete') scheduleReady();
   else window.addEventListener('load', scheduleReady);
 
-  // If a script fails or the load event never fires, reveal the app anyway.
-  setTimeout(markReady, 4500);
+  // If a script fails or the data layer never settles, reveal the app anyway.
+  setTimeout(markReady, 12000);
 
   var leaving = false;
 

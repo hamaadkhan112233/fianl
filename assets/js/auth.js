@@ -5,6 +5,8 @@
 (function () {
   'use strict';
 
+  Store.init().then(function () {
+
   var $ = UI.$;
   var DEST = 'wardrobe.html';
 
@@ -181,5 +183,6 @@
       event.preventDefault();
       $('#loginPass').focus();
     }
+  });
   });
 })();
